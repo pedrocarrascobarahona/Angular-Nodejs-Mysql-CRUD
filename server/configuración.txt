@@ -1,0 +1,1028 @@
+﻿cd server
+npm i nodemon -D    <Terminal 1  instala dependencias de desarrollo y no de producción
+npm run build       <Terminal 1
+npm run dev         <terminal 2  otorga puerto 3000
+
+npm i @types/express -D                 <Terminal 3 
+npm i @types/morgan @types/cors -D      <Terminal 3
+
+mysql -u root -p                        <Terminal 3
+
+458  npm run dev                        <Terminal 3
+----------------
+cd client
+ng serve                                <Terminal3
+
+
+
+
+cd server
+npm init --yes      <crea el package.json
+npm i express morgan promise-mysql cors     <muestra peticiones en consola, el modulo de mysql, permite comunicar 2 servidores para comunicarse con el rest api...lo anterior crea la carpeta node_modules
+---
+new folder src/new archivo index.ts   <tipear console.log('WORKS')
+---
+ir a www.typescriptlang.org/download/ 
+cd server
+npm install -g typescript 
+ubicarse en folder src
+tsc     -->mensaje que no encuentra archivo de configuarción typescript
+tsc --init     <crea el archivo de configuración y hay que cambiar en tsconfig.json "target": "es5", por "target": "es6",   tambien descomentar // "outDir": "./", como   "outDir": "./buid",
+tsc         <para confirmar y aparece la carpeta build con el codigo 'WORKS' :)
+------------------
+package.json    
+"scripts": {"build": "tsc -w"},     <vigila todos los cambios
+---
+cd server
+npm run build
+---
+ terminal 1
+npm i nodemon -D  <  instala dependencias de desarrollo y no de producción
+---
+package.json
+"scripts": {"build": "tsc -w",
+    "dev": "nodemon build/index.js"       <crear comando que ejecuta nodemon para vigilar index.js
+---
+Nueva termminal 2 +
+npm run dev
++++++++++ min 27 +++++++++++++++++++++
+index.ts
+import express from 'express';      <error express hay que instalar en nueva terminal
+---
+Nueva Terminal 3 +
+cd server
+npm i @types/express -D
+---
++++++++++++min 34+++++++++++++++++++++
+src new folder routes
+new archivo indexRoutes.ts
+new archivo gamesRoutes.ts
+---
+indexRoutes.ts
+
+import express, { Application} from 'express';
+
+import indexRoutes from './routes/indexRoutes';
+import gamesRoutes from './routes/gamesRoutes';
+
+class Server {
+
+    public app: Application;
+
+    constructor(){
+        this.app = express();
+        this.config();
+        this.routes();
+    }
+
+    config(): void{
+        this.app.set('port', process.env.PORT || 3000);
+    }
+
+    routes(): void{
+        this.app.use('/', indexRoutes);
+        this.app.use('/api/games', gamesRoutes);
+    }
+
+    start(): void{
+        this.app.listen(this.app.get('port'), () => {
+            console.log('Server on port', this.app.get('port'));
+        });
+    }
+
+
+}
+
+const server = new Server();
+server.start();
+--------------------------------
+gamesRoutes.ts
+
+import { Router } from 'express';
+
+
+
+class GamesRoutes {
+
+    public router: Router = Router();
+
+    constructor() {
+        this.config();
+    }
+
+    config(): void {
+        this.router.get('/', (req, res) => res.send('Games'));
+    }
+
+}
+
+const gamesRoutes = new GamesRoutes();
+export default gamesRoutes.router;
+
+----------------------------------
+
+npm i @types/morgan @types/cors -D
+
+
+-----------min 45  BASE DE DATOS------------------------
+situarse en proyecto
+new folder database   
+new archivo database.sql
+-------
+
+CREATE DATABASE ng_games;
+
+USE ng_games;
+
+CREATE TABLE game (
+    id INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(180),
+    description VARCHAR(255),
+    image VARCHAR(200),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+RENAME TABLE game to games;
+
+DESCRIBE games;
+-----------------
+New folder database
+New file  database.sql
+New terminal 3 +
+mysql -u root -p
+y pegar el database, use, create table describe....
+
+++++++++++++ MINUTO 51  ++++++++++++++++++++++++
+situarse en src
+new file database.ts
+
+import mysql from 'promise-mysql';
+
+import keys from './keys';
+
+const pool = mysql.createPool(keys.database);
+
+pool.getConnection()
+    .then(connection => {
+        pool.releaseConnection(connection);
+        console.log('DB is Connected');
+    });
+
+export default pool;
+
+import mysql from 'promise-mysql';
+
+import keys from './keys';
+
+const pool = mysql.createPool(keys.database);
+
+pool.then((r: any) => r.getConnection().then((connection: any) => {
+    (await pool).releaseConnection(connection);
+    console.log("DB is connected");
+  }));
+  
+export default pool;
+
+-------- OTRA  CONEXIÓN
+import mysql from 'promise-mysql';
+
+import keys from './keys';
+
+const pool = mysql.createPool(keys.database);
+
+pool.then((r: any) => r.getConnection().then(async (connection: any) => {
+    (await pool).releaseConnection(connection);
+    console.log("DB is connected");
+  }));
+  
+export default pool;
+
+-------------------------------
+situarse en src
+new file keys.ts
+
+export default {
+
+    database: {
+        host: 'localhost',
+        user: 'root',
+        password: '',
+        database: 'ng_games'
+    }
+
+}
+
+-----------------------------
+indexRoutes.ts
+
+import { Router } from 'express';
+
+import { indexController } from '../controllers/indexController';
+
+class IndexRoutes {
+
+    public router: Router = Router();
+
+    constructor() {
+        this.config();
+    }
+
+    config(): void {
+        this.router.get('/', indexController.index);
+    }
+
+}
+
+
+const indexRoutes = new IndexRoutes();
+export default indexRoutes.router;
+
+-----------------------------
+indexController.ts
+
+import { Request, Response } from 'express';
+
+class IndexController {
+
+    public index(req: Request, res: Response) {
+        res.json({text: 'API is in /api/games'});
+    }
+
+}
+
+export const indexController = new IndexController;
+
+----------------------
+gamesRoutes.ts
+
+import { Router } from 'express';
+
+import gamesController from '../controllers/gamesControllers';
+
+
+class GamesRoutes {
+
+    public router: Router = Router();
+
+    constructor() {
+        this.config();
+    }
+
+    config(): void {
+        this.router.get('/',gamesController.index );
+        
+    }
+
+}
+
+const gamesRoutes = new GamesRoutes();
+export default gamesRoutes.router;
+
+ --------------------
+    GAMESCONTROLLERS.TS
+
+ import { Request, Response } from 'express';
+
+import pool from '../database';
+
+class GamesController {
+
+    public async index(req: Request, res: Response) {
+        (await pool).query('DESCRIBE games');
+        res.json('DESCRIBE games');
+        
+    }
+
+}
+
+ const gamesController = new GamesController;
+ export default gamesController;
+
+
+
+#########  FUNCIONANDO CONEXION mysql   ###############################################
+
+MINUTO 1:07:
+
+ejemplo POSTMAN   https://rickandmortyapi.com/api/episode/
+    POSTMAN
+-----------------------
+gamesRoutes.ts
+
+config(): void {
+        this.router.get('/',gamesController.list);
+        this.router.get('/:id',gamesController.getOne );
+        this.router.post('/', gamesController.create);
+        this.router.put('/:id', gamesController.update);
+        this.router.delete('/:id', gamesController.delete);
+}
+-------------------------
+gamesController.ts
+
+class GamesController {
+
+    public async list (req: Request, res: Response) {
+        (await pool).query('DESCRIBE games');
+        res.json({text: 'list all games'});
+    }
+
+    public getOne (req: Request, res: Response){
+        res.json({text: 'this is game ' + req.params.id});
+    }
+
+    public create (req: Request, res: Response){
+        res.json({text: 'creating a game'});
+    }
+
+    public update (req: Request, res: Response){
+        res.json({text: 'Updating a game ' + req.params.id});
+    }
+
+    public delete (req: Request, res: Response){
+        res.json({text: 'deleting a game ' + req.params.id});
+    }
+--------  ***1   ----------
+gamesController.ts
+public create (req: Request, res: Response){
+        console.log(req.body);
+        res.json({text: 'creating a game'});
+    }
+-------------------
+para probar lo anterior***1
+POSTMAN
+Headers
+KEY  =Content-Type
+VALUE =application/json
+---
+
+body
+{
+   "title": "Detroid Become Human",
+   "description": "A PS4 game",
+   "image": "https://img.youtube.com/vi/sAmKdZdfV1c/maxresdefault.jpg"
+}
+POST http://localhost:3000/api/games/
+y en consola2 node muestra satisfactoriamente
+POST /api/games/ 200 1.410 ms - 26
+{
+  title: 'Detroid Become Human',
+  description: 'A PS4 game',
+  image: 'https://img.youtube.com/vi/sAmKdZdfV1c/maxresdefault.jpg'
+}
+POST /api/games/ 200 191.536 ms - 26
+--------------------------
+--------  ***1   ----------
+gamesController.ts
+eliminar console.log y agregar el insert
+
+ public async create (req: Request, res: Response): Promise<void>{
+        (await pool).query('INSERT INTO games set ?', [req.body]);
+        res.json({message: 'Game Saved'});
+    }
+
+POSTMAN
+POST http://localhost:3000/api/games
+
+Terminal 2 muestra satisfactorio 200
+Server on port 3000
+DB is connected
+POST /api/games/ 200 
+-------------------
+gamesController.ts
+public async list (req: Request, res: Response) {
+        const games = (await pool).query('SELECT * FROM games');
+        res.json(games);
+    }
+
+POSTMAN
+GET  http://localhost:3000/api/games 
+
+++++++++++++++++ CREAR OTRO JUEGO++++++++++++++++++++++++++++++++++++++++++++++++++++++
+POST
+body
+{
+   "title": "Undertale",
+   "description": "A RPG game",
+   "image": "https://www.alfabetajuega.com/wp-content/uploads/2019/05/undertale-sans.jpg"
+}
+-----------------
+public getOn
+
+public async getOne(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        const games = await (await pool).query('SELECT * FROM games WHERE id = ?', [id]);
+        console.log(games);
+        res.json({text: 'Game founded'});
+    }
+
+Terminal muestra el arreglo
+[
+  RowDataPacket {
+    id: 2,
+    title: 'Undertale',
+    description: 'A RPG game',
+    image: 'https://www.alfabetajuega.com/wp-content/uploads/2019/05/undertale-sans.jpg',
+    created_at: 2019-12-09T19:54:24.000Z
+  }
+]
+--------
+console.log(games.length);
+        if (games.length > 0) {
+            return res.json(games[0]);
+        }
+        res.status(404).json({ text: "The game doesn't exits" });
+
+
+ ------------------   DELETE---------------------------------------- 
+
+public async delete(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        await (await pool).query('DELETE FROM games WHERE id = ?', [id]);
+        res.json({ message: "The game was deleted" });
+    }
+
+---------------
+POSTMAN/DELETE
+FUNCIONANDO
+
+---------------- UPDATE -----------------------------
+
+explorador buscar delyarune
+POSTMAN body
+{
+   "title": "DeltaRune",
+   "description": "A RPG game Deltarune",
+   "image": "https://pl4yers.com/wp-content/uploads/2019/02/deltarune-nintendo-switch-pc-ps4_324920.jpg"
+}
+PUT http://localhost:3000/api/games/1
+GET http://localhost:3000/api/games/1
+
+------------TERMINA API---------------------------------------------
+++++++++++  NEW CLIENT+++++++++++++++++++++++++++++++++++++++++++++
+
+NUEVA TERMINAL 3   exit <primero desconectar mysql 
+exit
+---
+cd ..
+C:\Users\Pedro\Desktop\angular-mysql-crud>
+
+ng new client --routing            <crea proyecto client
+CSS
+---
+cd client
+ng g c components/navigation
+ng g c component/game-form  
+ng g c component/game-list
+--------
+NO EN TERMINAL !!
+app 
+New Folder models
+models
+New File Game.ts
+--------
+en Terminal
+ng g s services/games
+--------------------------------------
+--------------------------------------
+cd client
+ng serve
+app.component.html        <eliminar codigo por defecto 
+
+<app-navigation></app-navigation>
+
+<div class="container p-4">
+    <router-outlet></router-outlet>
+</div>
+-------------------
+
+
+ir a getbootstrap.com y copiar CSS
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+copiar en el head de src/index.html
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+-----
+ir a
+https://getbootstrap.com/docs/4.4/components/alerts/
+buscar navbar y dentro nav # pegarlo en navigation.component.html
+---
+navigation.component.html
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <a class="navbar-brand" href="#">Navbar</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="navbarNav">
+    <ul class="navbar-nav">
+      <li class="nav-item active">
+        <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Features</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Pricing</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">Disabled</a>
+      </li>
+    </ul>
+  </div>
+</nav>
+
+----------------------
+ir a bootswatch.com
+ seleccionar lux   download
+
+ <link rel="stylesheet" href="https://bootswatch.com/4/lux/bootstrap.min.css">
+
+
+  <!-- FONT AWESOME -->
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.1/css/all.css" integrity="sha384-gfdkjb5BdAXd+lj+gudLWI+BXq4IuLW5IT+brZEZsLFm++aCMlF1V92rMkPaX4PP" crossorigin="anonymous">
+--------------------
+app-routing.module.ts
+
+import { NgModule } from '@angular/core';
+import { Routes, RouterModule } from '@angular/router';
+
+
+import { GameListComponent } from './components/game-list/game-list.component';
+import { GameFormComponent } from './components/game-form/game-form.component';
+
+const routes: Routes = [
+  {
+    path: '',
+    redirectTo: '/games',
+    pathMatch: 'full'
+  },
+  {
+    path: 'games',
+    component: GameListComponent
+  },
+  {
+    path: 'games/add',
+    component: GameFormComponent
+  },
+  {
+    path: 'games/edit/:id',
+    component: GameFormComponent
+  }
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule]
+})
+export class AppRoutingModule { }
+
+-------------------
+
+components/Game.ts
+
+import { Title } from '@angular/platform-browser';
+
+export interface Game {
+    id?: number,
+    title?: string,
+    description?: string,
+    image?: string,
+    created_at?: Date
+};
+
+------- SERVICIOS API---------------
+services/games.service.ts
+
+
+2:00
+
+
+
+
+--------------------------------------
+2:09
+explorador/ fontawesome.com/start/cdn
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.1/css/all.css" integrity="sha384-gfdkjb5BdAXd+lj+gudLWI+BXq4IuLW5IT+brZEZsLFm++aCMlF1V92rMkPaX4PP" crossorigin="anonymous">
+
+-----------   ADD GAME-------------------------
+app-routing.module.ts
+
+
+--------------
+en el explordor   http://localhost:4200/games/add
+muestra    <game-form works!
+
+--------------
+game-form.component.html
+
+
+
+----------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
